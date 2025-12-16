@@ -1,0 +1,132 @@
+NAME: scenemoDiff_1210_Train_MLPAndLoss_LOSS0_2_100Epoch
+DEBUG: False
+ACCELERATOR: 'gpu'
+DEVICE: [0]
+
+SCENE_MODIFF_ABLATION:
+  FUSION_MODE: "film"  # 消融的话是“mlp”
+  USE_SCENE_CLS: True      # 是否使用场景分类 Loss，消融掉的话是False
+  LAMBDA_SCENE: 0.2       # 场景分类 Loss 的权重，如果测试消融FiLM的话，这个值不要改；如果要尝试炼丹，估计先试试改这个值
+  DIFFUSION_PENALTY: 0.5  # 这个值先别炼丹了，估计没什么用，这个指的是有场景的样本会把 diffsion loss往下压一点点，让模型更关注场景
+  UPDATE_BASELINE: True  # 保持这个就挺好，这个是论文里面写的那个涨点模块，没崩了就一直开着吧
+
+  JUST_FINETUNE_BASELINE: False # 只微调 baseline 部分，没有新增模块，注意只有FintuneBaseline那个yaml里面是True，其他的都应该是False
+
+TRAIN:
+  STAGE: diffusion
+  DATASETS: ['stylescenedataset']
+  # Number of dataloader workers
+  NUM_WORKERS: 4
+  # Size of batches
+  BATCH_SIZE: 32
+  # Total epochs for training
+  END_EPOCH: 100
+
+  RESUME: '' # Resume training from this path
+  PRETRAINED_VAE: 'checkpoints/vae_checkpoint/vae7.ckpt' # vae model path
+  PRETRAINED: 'checkpoints/denoiser_checkpoint/denoiser.ckpt'
+  # PRETRAINED: '/root/autodl-tmp/MyRepository/MCM-LDM/experiments/mld/scenemoDiff_1210_TrainAll/checkpoints/epoch=69.ckpt'
+  OPTIM:
+    TYPE: AdamW # Optimizer type
+    LR: 2e-5 # Learning rate
+    # 【关键】为 Denoiser 设置一个很小的学习率，进行微调
+    LR_DENOISER: 1.0e-5
+    # 【关键】可以适当降低新模块的学习率，因为它们已经 warm-up 过了
+    LR_ADAPTER: 1.0e-4
+  # Ablation study configurations.
+  ABLATION:
+    SKIP_CONNECT: True
+    PE_TYPE: mld
+    DIFF_PE_TYPE: mld
+    FUSION_MODE: "film"
+
+#####################################
+# The following are validation settings
+#####################################
+EVAL:
+  DATASETS: ['humanml3d'] # Evaluating datasets
+  BATCH_SIZE: 32 # Evaluating Batch size
+  SPLIT: test
+
+#####################################
+# The following are testing settings
+#####################################
+TEST:
+  # CHECKPOINTS: 'checkpoints/denoiser_checkpoint/denoiser.ckpt' # our model path
+  # CHECKPOINTS: '/root/autodl-tmp/MyRepository/MCM-LDM/experiments/mld/testWithScene_1203_scenetext_addImage/checkpoints/epoch=149.ckpt'
+  CHECKPOINTS: '/root/autodl-tmp/MyRepository/MCM-LDM/experiments/mld/testWithScene_1203_scenetext_addImage_withNewLossFunc/checkpoints/epoch=49.ckpt'
+  #CHECKPOINTS: ./models/mld_humanml3d_checkpoint/1222_mld_humanml3d_FID041.ckpt # Pretrained model path
+  DATASETS: ['humanml3d'] # training datasets
+  SPLIT: test
+  BATCH_SIZE: 128 # training Batch size
+  MEAN: False
+  NUM_SAMPLES: 1
+  FACT: 1
+  MULTI_MODAL_TYPE: 'text'  # 'text' or 'image'
+  # MULTI_MODAL_TEXT_PROMPT: 'Walking in strong wind.'
+  MULTI_MODAL_TEXT_PROMPT: 'Walking in strong wind.'
+  MULTI_MODAL_IMAGE_PATH: '/root/autodl-tmp/MyRepository/MCM-LDM/datasets/humanml3d_scene/scene_images/Dumuqiao/01.jpg'
+  CFG_STYLE : 10.0
+  CFG_SCENE : 10.0
+
+#####################################
+# The following are basic datasets settings
+#####################################
+DATASET:
+  JOINT_TYPE: 'humanml3d' # join type
+
+#####################################
+# The following are metric settings
+#####################################
+METRIC:
+  TYPE: ['TemosMetric', 'TM2TMetrics']
+
+#####################################
+# The following are training losses settings
+#####################################
+LOSS:
+  TYPE: mld # Losses type
+  LAMBDA_LATENT: 1.0e-5 # Lambda for latent Losses
+  LAMBDA_KL: 1.0e-4 # Lambda for kl Losses
+  LAMBDA_REC: 1.0 # Lambda for reconstruction Losses
+  LAMBDA_GEN: 1.0 # Lambda for text-motion generation losses
+  LAMBDA_CROSS: 1.0 # Lambda for reconstruction Losses
+  LAMBDA_CYCLE: 0.0 # Lambda for cycle Losses
+  LAMBDA_PRIOR: 0.0
+  DIST_SYNC_ON_STEP: False # Sync Losses on step when distributed trained
+
+  USE_SCENE_CLS: False      # 【总开关】是否使用场景分类 Loss
+  LAMBDA_SCENE: 0.2       # 【权重】分类 Loss 的权重
+  CORRUPTION_PROB: 0.7      # 【策略】训练时有多大概率破坏 Style，强迫模型学 Scene
+
+#####################################`
+# The following are basic model settings
+#####################################
+model:
+  vae: true # whether vae model
+  model_type: mld # model type
+  condition: 'text'
+  latent_dim: [7, 256] # latent dimension
+  ff_size: 1024 #
+  num_layers: 9 # number of layers
+  num_head: 4 # number of head layers
+  droupout: 0.1 # dropout rate
+  activation: gelu # activation type
+  guidance_scale: 5 #7.5 5
+  guidance_uncondp: 0.25 # 0.1 0.25
+
+#####################################
+# The following are loggers settings
+#####################################
+LOGGER:
+  SACE_CHECKPOINT_EPOCH: 25
+  LOG_EVERY_STEPS: 1
+  VAL_EVERY_STEPS: 100
+  TENSORBOARD: True
+  WANDB:
+    PROJECT: null
+    OFFLINE: False
+    RESUME_ID: null
+  
+TRAIN_STRTEGY:
+  MULTI_MODAL_FUSION: "text"  # 会使用图像/文本的一侧，概率各50%, 也可以设置为 "text" 或 "image"(表示为纯文本或者纯图像)

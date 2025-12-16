@@ -1,0 +1,36 @@
+# app_config.yaml
+settings:
+  title: "AI Alchemy Station"
+  icon: "🔥"
+
+modules:
+  train:
+    enable: true
+    file: "training.py"
+    name: "炼丹模式"   # 这里会覆盖类里的 self.name
+    icon: "⚗️"       # 这里会覆盖类里的 self.icon
+
+  code_review:
+    enable: true
+    file: "code_reviewer.py"
+    name: "代码审计 (Reader)"
+    icon: "🧐"
+
+  # omni_run:
+  #   enable: true
+  #   file: "omni_runner.py"
+  #   name: "OmniControl 启动器"
+  #   icon: "🏃"
+
+  omni_and_motionlcm_run:
+    enable: true
+    file: "omni_and_MotionLCM_runner.py"
+    name: "OmniControl + MotionLCM 启动器"
+    icon: "🤖"
+  video_gallery:
+    enable: true
+    file: "video_gallery.py"
+    name: "视频画廊"
+    icon: "🎥"
+
+  
