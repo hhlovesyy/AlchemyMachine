@@ -1,0 +1,73 @@
+# ----------------------------------------------------
+# 1. 编译和运行时文件 (Python / PyTorch)
+# ----------------------------------------------------
+# 忽略所有 .pyc 编译文件和 __pycache__ 目录
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cython / C 扩展编译产物
+*.so
+*.pyd
+
+# ----------------------------------------------------
+# 2. 环境和依赖管理
+# ----------------------------------------------------
+# 忽略 Conda 环境文件和配置
+# 如果您在项目根目录使用 .conda 文件夹存储环境
+.conda/
+# 忽略虚拟环境文件夹（通常叫 venv 或 env）
+venv/
+env/
+
+# Pip 安装包的构建目录
+build/
+dist/
+*.egg-info/
+.installed.cfg
+
+# ----------------------------------------------------
+# 3. 数据、日志和模型权重
+# ----------------------------------------------------
+# 数据集文件夹（数据集文件通常非常大，不应提交）
+data/
+datasets/
+
+# 模型权重文件（您之前提到的 save 文件夹，模型权重文件非常大）
+# 忽略所有模型权重、检查点文件
+save/
+checkpoints/
+*.pt
+*.pth
+*.pth.tar
+*.safetensors
+
+# 日志、TensorBoard/WandB 等实验记录
+log/
+logs/
+runs/
+wandb/
+
+# ----------------------------------------------------
+# 4. 操作系统和 IDE 文件
+# ----------------------------------------------------
+# macOS 专有文件
+.DS_Store
+
+# Windows 缩略图缓存
+Thumbs.db
+
+# VS Code 调试缓存、配置和历史记录
+# 忽略 VS Code 调试数据，但保留 launch.json
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.vscode/*.log
+.vscode/pylint.json
+
+# Jupyter Notebook 检查点（防止版本冲突）
+.ipynb_checkpoints
+
+# 临时文件
+*~
