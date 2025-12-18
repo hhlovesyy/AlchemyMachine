@@ -4,12 +4,7 @@ settings:
   icon: "🔥"
 
 modules:
-  train:
-    enable: true
-    file: "training.py"
-    name: "炼丹模式"   # 这里会覆盖类里的 self.name
-    icon: "⚗️"       # 这里会覆盖类里的 self.icon
-
+  
   code_review:
     enable: true
     file: "code_reviewer.py"
@@ -41,3 +36,28 @@ modules:
     name: "GVHMR 动作提取"      # 侧边栏显示的名称
     icon: "💃"                # 图标
   # ==================
+
+  train:
+    enable: true
+    file: "training.py"
+    name: "炼丹/训练模式"   # 这里会覆盖类里的 self.name
+    icon: "⚗️"       # 这里会覆盖类里的 self.icon
+
+
+  inference:
+    enable: true
+    file: "inference.py"
+    name: "推理模式 (Inference)"
+    icon: "🔮"
+
+  evaluation:
+    enable: true
+    file: "evaluation.py"
+    name: "我要评估 (Eval)"
+    icon: "📊"
+
+  render:
+    enable: true
+    file: "render.py"
+    name: "看看你的：渲染"
+    icon: "🎬"
