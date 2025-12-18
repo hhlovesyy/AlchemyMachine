@@ -32,5 +32,10 @@ modules:
     file: "video_gallery.py"
     name: "视频画廊"
     icon: "🎥"
+  HumanML3DConverter:
+    enable: true
+    file: "motion_converter.py"
+    name: "HumanML3D万能格式转换器"
+    icon: "🥔"
 
   
