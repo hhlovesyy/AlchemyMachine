@@ -33,4 +33,11 @@ modules:
     name: "视频画廊"
     icon: "🎥"
 
-  
+
+  # === 新增的部分 ===
+  gvhmr_run:
+    enable: true
+    file: "GVHMR.py"   # 对应 modules/gvhmr_module.py 文件名
+    name: "GVHMR 动作提取"      # 侧边栏显示的名称
+    icon: "💃"                # 图标
+  # ==================
