@@ -66,3 +66,9 @@ modules:
     file: "render.py"
     name: "看看你的：渲染"
     icon: "🎬"
+
+  point_selector:
+    enable: true
+    file: "point_selector.py"
+    name: "控制点编辑器"
+    icon: "🎯"
