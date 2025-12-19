@@ -6,7 +6,7 @@ from scipy.interpolate import splprep, splev
 class PathPlanner:
     def __init__(self, world_range=20.0, grid_res=0.2, margin=0.5):
         """
-        :param world_range: 世界范围 (米)，例如 20表示 [-10, 10]
+        :param world_range: 世界范围 (米)
         :param grid_res: 网格分辨率 (米/格)
         :param margin: 避障安全距离 (米)
         """
@@ -34,23 +34,47 @@ class PathPlanner:
         return wx, wy
 
     def set_obstacles(self, obstacles):
-        """映射障碍物"""
+        """
+        映射障碍物
+        obstacles: list of dict
+          - Cylinder: {'type': 'cylinder', 'center': [x, z], 'radius': r}
+          - Box:      {'type': 'box', 'center': [x, z], 'extent': [width, depth]}
+        """
         self.grid.fill(0) 
+        
+        # 生成网格的物理坐标矩阵
         y_idxs, x_idxs = np.indices((self.grid_size, self.grid_size))
         world_xs = (x_idxs * self.res) - self.offset
         world_ys = (y_idxs * self.res) - self.offset
         
         for obs in obstacles:
             ox, oy = obs['center']
-            r = obs['radius'] + self.margin 
-            dist = np.sqrt((world_xs - ox)**2 + (world_ys - oy)**2)
-            self.grid[dist <= r] = 1
+            
+            if obs['type'] == 'cylinder':
+                # 圆形逻辑
+                r = obs['radius'] + self.margin 
+                dist = np.sqrt((world_xs - ox)**2 + (world_ys - oy)**2)
+                self.grid[dist <= r] = 1
+                
+            elif obs['type'] == 'box':
+                # === 🔥 新增：矩形逻辑 🔥 ===
+                # extent = [width, depth]
+                w, d = obs['extent']
+                # 考虑安全边距
+                half_w = (w / 2.0) + self.margin
+                half_d = (d / 2.0) + self.margin
+                
+                # 判断点是否在矩形范围内 (Axis-Aligned Bounding Box)
+                mask_x = np.abs(world_xs - ox) <= half_w
+                mask_y = np.abs(world_ys - oy) <= half_d
+                self.grid[mask_x & mask_y] = 1
 
     def _astar(self, start, end):
         """标准 A* 算法"""
         start_node = self._to_grid(*start)
         end_node = self._to_grid(*end)
         
+        # 检查起点终点是否在障碍物内
         if self.grid[start_node[1], start_node[0]] == 1:
             return [start]
         if self.grid[end_node[1], end_node[0]] == 1:
@@ -77,6 +101,7 @@ class PathPlanner:
                 continue
             visited.add(current)
             
+            # 8连通
             for dx, dy in [(-1,0),(1,0),(0,-1),(0,1), (-1,-1),(-1,1),(1,-1),(1,1)]:
                 nx, ny = cx + dx, cy + dy
                 neighbor = (nx, ny)
@@ -114,7 +139,6 @@ class PathPlanner:
         # B-Spline 平滑
         if len(raw_path) > 3:
             try:
-                # s=平滑因子
                 tck, u = splprep(raw_path.T, u=None, s=0.5, k=3) 
                 u_new = np.linspace(u.min(), u.max(), 200) 
                 smooth_path = np.array(splev(u_new, tck)).T
