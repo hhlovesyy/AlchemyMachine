@@ -17,55 +17,74 @@ class EvaluationModule(BaseModule):
     def render_sidebar(self):
         st.subheader("📊 评估资源配置")
         st.info("💡 评估分为两阶段：先生成 Motion (Stage 1)，再计算一致性 (Stage 2)。")
+
+        # [NEW] 添加自定义 Checkbox
+        self.use_custom_yaml = st.checkbox("使用自定义 YAML 配置", key="use_custom_yaml_cb")
         
-        # ================= Stage 0: 基础设置 (用于 Stage 1) =================
-        st.markdown("#### 1. 待评估模型 (For Stage 1)")
-        
-        exp_root = os.path.join(self.ctx.root_dir, "experiments", "mld")
-        if os.path.exists(exp_root):
-            exps = sorted(os.listdir(exp_root), key=lambda x: os.path.getmtime(os.path.join(exp_root, x)), reverse=True)
+        if not self.use_custom_yaml:
+            # ================= Stage 0: 基础设置 (用于 Stage 1) =================
+            st.markdown("#### 1. 待评估模型 (For Stage 1)")
+            
+            exp_root = os.path.join(self.ctx.root_dir, "experiments", "mld")
+            if os.path.exists(exp_root):
+                exps = sorted(os.listdir(exp_root), key=lambda x: os.path.getmtime(os.path.join(exp_root, x)), reverse=True)
+            else:
+                exps = []
+
+            if not exps:
+                st.error("⚠️ 未找到实验记录")
+                return
+
+            # 选择实验
+            self.selected_exp_name = st.selectbox("选择实验", exps, key="eval_exp_sb")
+            self.exp_path = os.path.join(exp_root, self.selected_exp_name)
+
+            # 选择 Checkpoint
+            ckpt_dir = os.path.join(self.exp_path, "checkpoints")
+            ckpt_names = []
+            if os.path.exists(ckpt_dir):
+                ckpts = glob.glob(os.path.join(ckpt_dir, "*.ckpt"))
+                ckpt_names = [os.path.basename(c) for c in ckpts]
+                # 简单按长度排序（原版逻辑），你也可以改回正则排序
+                ckpt_names = sorted(ckpt_names, key=lambda x: len(x), reverse=True) 
+            
+            self.selected_ckpt_name = st.selectbox("选择 Checkpoint", ckpt_names, key="eval_ckpt_sb")
+            self.selected_ckpt_path = os.path.join(ckpt_dir, self.selected_ckpt_name) if self.selected_ckpt_name else None
         else:
-            exps = []
+            self.selected_exp_name = "Custom_YAML_Run"
 
-        if not exps:
-            st.error("⚠️ 未找到实验记录")
-            return
-
-        # 选择实验
-        self.selected_exp_name = st.selectbox("选择实验", exps, key="eval_exp_sb")
-        self.exp_path = os.path.join(exp_root, self.selected_exp_name)
-
-        # 选择 Checkpoint
-        ckpt_dir = os.path.join(self.exp_path, "checkpoints")
-        ckpt_names = []
-        if os.path.exists(ckpt_dir):
-            ckpts = glob.glob(os.path.join(ckpt_dir, "*.ckpt"))
-            ckpt_names = [os.path.basename(c) for c in ckpts]
-            # 简单按长度排序（原版逻辑），你也可以改回正则排序
-            ckpt_names = sorted(ckpt_names, key=lambda x: len(x), reverse=True) 
-        
-        self.selected_ckpt_name = st.selectbox("选择 Checkpoint", ckpt_names, key="eval_ckpt_sb")
-        self.selected_ckpt_path = os.path.join(ckpt_dir, self.selected_ckpt_name) if self.selected_ckpt_name else None
 
     def render_main(self):
         st.markdown("## 📊 智能评估中心 (Two-Stage)")
         
-        if not hasattr(self, 'selected_ckpt_path') or not self.selected_ckpt_path:
-            st.warning("👈 请先在侧边栏选择要评估的模型！")
-            return
-
         # ================= Stage 1: Standard Evaluation =================
         st.markdown("### 1️⃣ Stage 1: 生成与标准指标")
         st.markdown("> 运行 `run_evaluation.sh`，生成 Motion PKL 文件并计算 FID/Run/Div 等指标。")
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.caption(f"Target Exp: `{self.selected_exp_name}`")
-            st.caption(f"Target Ckpt: `{self.selected_ckpt_name}`")
-        with col2:
-            btn_s1 = st.button("🚀 运行 Stage 1", type="primary", use_container_width=True)
-
+        # [NEW] 自定义 YAML 编辑区
+        if self.use_custom_yaml:
+            default_yaml_path = "/root/autodl-tmp/MyRepository/MCM-LDM/configs/scenemodiff_train_LiandanBase.yaml"
+            if "custom_yaml_content" not in st.session_state:
+                if os.path.exists(default_yaml_path):
+                    with open(default_yaml_path, 'r', encoding='utf-8') as f:
+                        st.session_state.custom_yaml_content = f.read()
+                else:
+                    st.session_state.custom_yaml_content = "# Error: File not found"
+            
+            st.info("📝 请编辑下方配置 (直接修改 Checkpoints 路径等参数):")
+            self.custom_yaml_text = st.text_area("YAML Config Editor", st.session_state.custom_yaml_content, height=300)
+            st.session_state.custom_yaml_content = self.custom_yaml_text # 同步状态
+        else:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.caption(f"Target Exp: `{self.selected_exp_name}`")
+                st.caption(f"Target Ckpt: `{self.selected_ckpt_name}`")
+            # with col2:
+                
+        btn_s1 = st.button("🚀 运行 Stage 1", type="primary", use_container_width=True)
         if btn_s1:
+            if not hasattr(self, 'selected_ckpt_path') or not self.selected_ckpt_path:
+                st.warning("👈 请先在侧边栏选择要评估的模型！")
+                return
             self._run_stage_1()
 
         st.divider()
@@ -118,24 +137,35 @@ class EvaluationModule(BaseModule):
 
     # ================= 核心逻辑：Stage 1 =================
     def _run_stage_1(self):
-        # 1. 准备配置
-        launcher_yaml = os.path.join(self.exp_path, "launcher_config.yaml")
-        if not os.path.exists(launcher_yaml):
-            # 兜底
-            yamls = glob.glob(os.path.join(self.exp_path, "*.yaml"))
-            launcher_yaml = yamls[0] if yamls else None
-        
-        if not launcher_yaml:
-            st.error("❌ 找不到 yaml 配置文件")
-            return
-
-        eval_cfg = load_yaml(launcher_yaml)
-        if 'TEST' not in eval_cfg: eval_cfg['TEST'] = {}
-        eval_cfg['TEST']['CHECKPOINTS'] = self.selected_ckpt_path
-        
-        # 保存临时配置
+        # 定义临时配置文件路径
         temp_eval_yaml_path = os.path.join(self.ctx.config_dir, f"eval_temp_{self.selected_exp_name}.yaml")
-        save_yaml(eval_cfg, temp_eval_yaml_path)
+
+        # [NEW] 分支逻辑
+        if self.use_custom_yaml:
+            # A. 自定义模式：直接将编辑框的内容写入临时文件，不修改任何字段
+            try:
+                content = st.session_state.custom_yaml_content
+                with open(temp_eval_yaml_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+            except Exception as e:
+                st.error(f"❌ 保存自定义 YAML 失败: {e}")
+                return
+        else:
+            # B. 原有逻辑：加载实验配置 -> 覆盖 Checkpoint -> 保存
+            launcher_yaml = os.path.join(self.exp_path, "launcher_config.yaml")
+            if not os.path.exists(launcher_yaml):
+                yamls = glob.glob(os.path.join(self.exp_path, "*.yaml"))
+                launcher_yaml = yamls[0] if yamls else None
+            
+            if not launcher_yaml:
+                st.error("❌ 找不到 yaml 配置文件")
+                return
+
+            eval_cfg = load_yaml(launcher_yaml)
+            if 'TEST' not in eval_cfg: eval_cfg['TEST'] = {}
+            eval_cfg['TEST']['CHECKPOINTS'] = self.selected_ckpt_path
+            
+            save_yaml(eval_cfg, temp_eval_yaml_path)
         
         # 2. 注入 run_evaluation.sh
         target_exp_name = f"{self.selected_exp_name}_Eval"

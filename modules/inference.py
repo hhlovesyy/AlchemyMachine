@@ -130,6 +130,9 @@ class InferenceModule(BaseModule):
         col_btn, col_blank = st.columns([1, 4])
         with col_btn:
             run_btn = st.button("🚀 立即运行", type="primary", use_container_width=True)
+        
+        with col_blank:
+            self.render_video = st.checkbox("是否渲染mp4视频？", value=False, key=self._get_key("b_render_video"))
 
         if run_btn:
             self.run_inference()
@@ -202,14 +205,21 @@ class InferenceModule(BaseModule):
         style_dir = os.path.join("demo", self.style_dir_name)
         
         script_name = "demo_transfer_with_scene.py"
-        cmd = (
-            f"python -u {script_name} "
-            f"--cfg {temp_inf_yaml} "
-            f"--cfg_assets {self.ctx.assets_file} "
-            f"--content_motion_dir {content_dir} "
-            f"--style_motion_dir {style_dir} "
-            f"--scale 2.5"
-        )
+        cmd_parts = [
+            "python -u", script_name,
+            "--cfg", temp_inf_yaml,
+            "--cfg_assets", self.ctx.assets_file,
+            "--content_motion_dir", content_dir,
+            "--style_motion_dir", style_dir,
+            "--scale", "2.5"
+        ]
+
+        # 2. 根据条件添加可选参数
+        if self.render_video:
+            cmd_parts.append("--render_video")
+
+        # 3. 最后合并为字符串
+        cmd = " ".join(cmd_parts)
         
         session_name = f"inf_{self.scene_short_name}"[:20]
         
