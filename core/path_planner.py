@@ -1,26 +1,17 @@
 import numpy as np
 import heapq
-# 只要装了 scipy，这里绝不会报错
 from scipy.interpolate import splprep, splev 
 
 class PathPlanner:
     def __init__(self, world_range=20.0, grid_res=0.2, margin=0.5):
-        """
-        :param world_range: 世界范围 (米)
-        :param grid_res: 网格分辨率 (米/格)
-        :param margin: 避障安全距离 (米)
-        """
         self.world_range = world_range
         self.res = grid_res
         self.margin = margin
         self.grid_size = int(world_range / grid_res)
         self.offset = world_range / 2.0
-        
-        # 初始化网格 (0:空闲, 1:障碍)
         self.grid = np.zeros((self.grid_size, self.grid_size), dtype=int)
 
     def _to_grid(self, x, y):
-        """物理坐标 -> 网格坐标"""
         gx = int((x + self.offset) / self.res)
         gy = int((y + self.offset) / self.res)
         gx = max(0, min(self.grid_size - 1, gx))
@@ -28,57 +19,40 @@ class PathPlanner:
         return gx, gy
 
     def _to_world(self, gx, gy):
-        """网格坐标 -> 物理坐标"""
         wx = (gx * self.res) - self.offset
         wy = (gy * self.res) - self.offset
         return wx, wy
 
     def set_obstacles(self, obstacles):
-        """
-        映射障碍物
-        obstacles: list of dict
-          - Cylinder: {'type': 'cylinder', 'center': [x, z], 'radius': r}
-          - Box:      {'type': 'box', 'center': [x, z], 'extent': [width, depth]}
-        """
         self.grid.fill(0) 
-        
-        # 生成网格的物理坐标矩阵
         y_idxs, x_idxs = np.indices((self.grid_size, self.grid_size))
         world_xs = (x_idxs * self.res) - self.offset
         world_ys = (y_idxs * self.res) - self.offset
         
         for obs in obstacles:
             ox, oy = obs['center']
-            
+            # 动态调整：确保至少有一个格子的阻挡
+            safe_margin = max(self.margin, self.res * 1.1)
+
             if obs['type'] == 'cylinder':
-                # 圆形逻辑
-                r = obs['radius'] + self.margin 
+                r = obs['radius'] + safe_margin
                 dist = np.sqrt((world_xs - ox)**2 + (world_ys - oy)**2)
                 self.grid[dist <= r] = 1
                 
             elif obs['type'] == 'box':
-                # === 🔥 新增：矩形逻辑 🔥 ===
-                # extent = [width, depth]
                 w, d = obs['extent']
-                # 考虑安全边距
-                half_w = (w / 2.0) + self.margin
-                half_d = (d / 2.0) + self.margin
-                
-                # 判断点是否在矩形范围内 (Axis-Aligned Bounding Box)
+                half_w = (w / 2.0) + safe_margin
+                half_d = (d / 2.0) + safe_margin
                 mask_x = np.abs(world_xs - ox) <= half_w
                 mask_y = np.abs(world_ys - oy) <= half_d
                 self.grid[mask_x & mask_y] = 1
 
     def _astar(self, start, end):
-        """标准 A* 算法"""
         start_node = self._to_grid(*start)
         end_node = self._to_grid(*end)
         
-        # 检查起点终点是否在障碍物内
-        if self.grid[start_node[1], start_node[0]] == 1:
-            return [start]
-        if self.grid[end_node[1], end_node[0]] == 1:
-            return [end]
+        if self.grid[start_node[1], start_node[0]] == 1: return [start]
+        if self.grid[end_node[1], end_node[0]] == 1: return [end]
 
         pq = [(0, start_node[0], start_node[1])]
         visited = set()
@@ -95,56 +69,80 @@ class PathPlanner:
                     path.append(current)
                     current = came_from[current]
                 path.append(start_node)
-                return path[::-1] # Reverse
+                return path[::-1]
             
-            if current in visited:
-                continue
+            if current in visited: continue
             visited.add(current)
             
-            # 8连通
             for dx, dy in [(-1,0),(1,0),(0,-1),(0,1), (-1,-1),(-1,1),(1,-1),(1,1)]:
                 nx, ny = cx + dx, cy + dy
-                neighbor = (nx, ny)
-                
                 if 0 <= nx < self.grid_size and 0 <= ny < self.grid_size:
                     if self.grid[ny, nx] == 1: continue
                     move_cost = 1.414 if dx!=0 and dy!=0 else 1.0
+                    # 增加一点点倾向性，鼓励走直线
                     new_g = g_score[current] + move_cost
-                    
-                    if neighbor not in g_score or new_g < g_score[neighbor]:
-                        g_score[neighbor] = new_g
+                    if (nx, ny) not in g_score or new_g < g_score[(nx, ny)]:
+                        g_score[(nx, ny)] = new_g
                         h = np.sqrt((nx - end_node[0])**2 + (ny - end_node[1])**2)
                         heapq.heappush(pq, (new_g + h, nx, ny))
-                        came_from[neighbor] = current
-        
+                        came_from[(nx, ny)] = current
         return [start_node, end_node]
 
-    def generate_path(self, waypoints, obstacles):
-        """生成最终平滑路径"""
+    def _simplify_path(self, points, epsilon):
+        if len(points) < 3: return points
+        dmax = 0.0
+        index = 0
+        end = len(points) - 1
+        a = np.array(points[0])
+        b = np.array(points[end])
+        if np.linalg.norm(b - a) == 0: return [points[0]]
+        
+        for i in range(1, end):
+            p = np.array(points[i])
+            d = np.abs(np.cross(b-a, a-p)) / np.linalg.norm(b-a)
+            if d > dmax:
+                index = i
+                dmax = d
+
+        if dmax > epsilon:
+            rec1 = self._simplify_path(points[:index+1], epsilon)
+            rec2 = self._simplify_path(points[index:], epsilon)
+            return rec1[:-1] + rec2
+        else:
+            return [points[0], points[end]]
+
+    # === 🔥 修改：接收外部传入的参数 🔥 ===
+    def generate_path(self, waypoints, obstacles, epsilon=0.2, smooth_factor=0.1):
+        """
+        :param epsilon: 简化阈值 (越大约直)
+        :param smooth_factor: B-Spline s因子 (越大约圆滑)
+        """
         self.set_obstacles(obstacles)
         full_grid_path = []
-        
         for i in range(len(waypoints) - 1):
             p_start = waypoints[i]
             p_end = waypoints[i+1]
             segment = self._astar(p_start, p_end)
-            if i > 0: segment = segment[1:] 
+            if i > 0: segment = segment[1:]
             full_grid_path.extend(segment)
             
-        if len(full_grid_path) < 2:
-            return np.array(waypoints)
+        if len(full_grid_path) < 2: return np.array(waypoints)
 
-        raw_path = np.array([self._to_world(p[0], p[1]) for p in full_grid_path])
+        raw_path = [self._to_world(p[0], p[1]) for p in full_grid_path]
         
-        # B-Spline 平滑
-        if len(raw_path) > 3:
+        # 1. 简化
+        simplified_path = self._simplify_path(raw_path, epsilon=epsilon)
+        simplified_path = np.array(simplified_path)
+
+        # 2. 平滑
+        if len(simplified_path) >= 3:
             try:
-                tck, u = splprep(raw_path.T, u=None, s=0.5, k=3) 
-                u_new = np.linspace(u.min(), u.max(), 200) 
+                # k=3 (三次样条)
+                tck, u = splprep(simplified_path.T, u=None, s=smooth_factor, k=min(3, len(simplified_path)-1)) 
+                u_new = np.linspace(u.min(), u.max(), 100)
                 smooth_path = np.array(splev(u_new, tck)).T
                 return smooth_path
-            except Exception as e:
-                print(f"Spline Error: {e}")
-                return raw_path
+            except:
+                return simplified_path
         else:
-            return raw_path
+            return simplified_path
