@@ -9,7 +9,15 @@ class CodeReviewModule(BaseModule):
         
         # 1. 输入根路径 (带有记忆功能)
         default_root = self.get_state("root_dir", "/root/autodl-tmp/MyRepository")
-        root_dir = st.text_input("代码根目录", default_root)
+        
+        # 🔥 修改这里：增加了 key 参数，保证唯一性 🔥
+        # key 建议包含模块名，防止和其他模块的同名输入框冲突
+        root_dir = st.text_input(
+            "代码根目录", 
+            value=default_root, 
+            key="code_review_root_input" 
+        )
+        
         self.set_state("root_dir", root_dir)
 
         # 2. 扫描文件

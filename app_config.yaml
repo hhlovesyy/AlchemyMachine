@@ -6,7 +6,7 @@ settings:
 modules:
   
   code_review:
-    enable: true
+    enable: false
     file: "code_reviewer.py"
     name: "代码审计 (Reader)"
     icon: "🧐"
@@ -18,7 +18,7 @@ modules:
   #   icon: "🏃"
 
   omni_and_motionlcm_run:
-    enable: true
+    enable: false
     file: "omni_and_MotionLCM_runner.py"
     name: "OmniControl + MotionLCM 启动器"
     icon: "🤖"

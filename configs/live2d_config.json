@@ -1,0 +1,46 @@
+{
+    "current_model": "Koharu", 
+    "display": {
+        "width": 200,
+        "height": 400,
+        "h_offset": 0,
+        "v_offset": -20
+    },
+    "models": {
+        "Koharu (小春)": "https://fastly.jsdelivr.net/npm/live2d-widget-model-koharu@1.0.5/assets/koharu.model.json",
+        "Haruto (男孩)": "https://fastly.jsdelivr.net/npm/live2d-widget-model-haruto@1.0.5/assets/haruto.model.json",
+        "Chitose (千岁)": "https://fastly.jsdelivr.net/npm/live2d-widget-model-chitose@1.0.5/assets/chitose.model.json",
+        "Miku (初音)": "https://fastly.jsdelivr.net/npm/live2d-widget-model-miku@1.0.5/assets/miku.model.json",
+        "Tororo (白猫)": "https://fastly.jsdelivr.net/npm/live2d-widget-model-tororo@1.0.5/assets/tororo.model.json"
+    },
+    "dialogues": {
+        "idle": [
+            "沪爷，今天也要加油炼丹哦！",
+            "显存还够吗？不够我把隔壁的偷过来~",
+            "代码写完了吗？",
+            "摸鱼被我抓到了哦！",
+            "Varsapura！"
+        ],
+        "running": [
+            "正在全力炼丹中... 🔥",
+            "GPU 温度 80度，好暖和~",
+            "不要关闭窗口哦，我在努力干活！",
+            "祈祷 Loss 下降，祈祷 Loss 下降..."
+        ],
+        "success": [
+            "好耶！任务完成啦！🎉",
+            "快去看看结果吧，看起来很不错！",
+            "不愧是沪爷，一次跑通！"
+        ],
+        "error": [
+            "呜呜... 报错了...",
+            "这是 Feature 不是 Bug！",
+            "快去查查 Log 吧 >_<"
+        ]
+    },
+    "tasks": [
+        {"id": 1, "text": "重构代码，做一些配置开关", "done": false},
+        {"id": 2, "text": "新的配置接入到炼丹机当中，可以让炼丹机走全流程", "done": false},
+        {"id": 3, "text": "渲染轨迹，障碍物，独木桥，目标点这些在最后的blender渲染结果当中", "done": false}
+    ]
+}

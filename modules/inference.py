@@ -176,6 +176,7 @@ class InferenceModule(BaseModule):
             return False
 
     def _execute_process(self):
+        self.set_live2d_state("running")
         # 寻找 yaml
         launcher_yaml = os.path.join(self.exp_path, "launcher_config.yaml")
         if not os.path.exists(launcher_yaml):

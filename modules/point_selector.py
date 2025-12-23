@@ -128,7 +128,7 @@ class PointSelectorModule(BaseModule):
 
     def render_sidebar(self):
         st.subheader("📝 任务参数")
-        with st.form("global_config"):
+        with st.form(key=f"{self.name}_config_form"):
             self.proj_name = st.text_input("Project Name", "Demo_Task_01")
             self.motion_val = st.text_input("Motion ID", "000021")
             st.form_submit_button("💾 更新")

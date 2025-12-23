@@ -114,3 +114,9 @@ class BaseModule(ABC):
             st.divider()
             self.render_sidebar()
         self.render_main()
+    
+    def set_live2d_state(self, state):
+        """
+        state: 'idle' | 'running' | 'success' | 'error'
+        """
+        st.session_state["live2d_state"] = state
