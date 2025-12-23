@@ -15,6 +15,11 @@ class BaseModule(ABC):
         self.icon = "📦"
         # 初始化转换器 (黑底白字)
         self.conv = Ansi2HTMLConverter(dark_bg=True, scheme='xterm', inline=True)
+        self._key_prefix = self.__class__.__name__ 
+    
+    def _get_key(self, widget_name):
+        """为当前模块内的组件生成一个全局唯一的 key"""
+        return f"{self._key_prefix}_{widget_name}"
 
     def get_state(self, key, default=None):
         full_key = f"{self.__class__.__name__}_{key}"
@@ -37,7 +42,7 @@ class BaseModule(ABC):
                 pass
         with c2:
             # 默认开启自动刷新，为了看进度条
-            auto_refresh = st.toggle("⚡ 自动同步", value=True, key=f"tog_{self.name}")
+            auto_refresh = st.toggle("⚡ 自动同步", value=False, key=f"tog_{self.name}")
         with c3:
             if log_path:
                 st.caption(f"Watching: `{os.path.basename(log_path)}`")
@@ -97,7 +102,7 @@ class BaseModule(ABC):
 
         # 6. 自动刷新逻辑
         if auto_refresh:
-            time.sleep(1) # 每1秒刷新一次，模拟实时感
+            time.sleep(5) # 每1秒刷新一次，模拟实时感
             st.rerun()
 
     @abstractmethod

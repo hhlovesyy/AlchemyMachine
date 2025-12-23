@@ -23,12 +23,12 @@ class VideoGalleryModule(BaseModule):
         parent_dir = os.path.dirname(current_path)
         col_up, col_root = st.columns([2, 1])
         with col_up:
-            if st.button("⬆️ 返回上一级", use_container_width=True):
+            if st.button("⬆️ 返回上一级", use_container_width=True, key=self._get_key("return_step")):
                 self.set_state("current_path", parent_dir)
                 self.set_state("gallery_page", 1) # 换目录时重置页码
                 st.rerun()
         with col_root:
-            if st.button("🏠 根目录", use_container_width=True):
+            if st.button("🏠 根目录", use_container_width=True,key=self._get_key("return_root")):
                 self.set_state("current_path", default_root)
                 self.set_state("gallery_page", 1)
                 st.rerun()
@@ -44,7 +44,7 @@ class VideoGalleryModule(BaseModule):
             if subdirs:
                 with st.container(height=400): # 固定高度滚动条，防止侧边栏太长
                     for d in subdirs:
-                        if st.button(f"📂 {d}", key=f"dir_{d}", use_container_width=True):
+                        if st.button(f"📂 {d}", key=self._get_key(f"dir_{d}"), use_container_width=True):
                             new_path = os.path.join(current_path, d)
                             self.set_state("current_path", new_path)
                             self.set_state("gallery_page", 1) # 切文件夹重置页码
@@ -91,7 +91,7 @@ class VideoGalleryModule(BaseModule):
             # 这是一个滑块或者数字输入框，用来翻页
             current_page = st.number_input(
                 f"第几页 (共 {total_pages} 页, {total_files} 个视频)", 
-                min_value=1, max_value=total_pages, value=current_page
+                min_value=1, max_value=total_pages, value=current_page, key=self._get_key("gallery_pager")
             )
             # 保存页码状态，防止刷新重置
             if current_page != self.get_state("gallery_page"):
@@ -120,7 +120,7 @@ class VideoGalleryModule(BaseModule):
                 st.video(video_path)
                 
                 # 2. 详情放在折叠框里，解决"下面东西太多"的问题
-                with st.expander(f"📝 {display_name}", expanded=False):
+                with st.expander(f"📝 {display_name}", expanded=False, key=self._get_key(f"expander_{file_name}")):
                     st.caption(f"全名: {file_name}")
                     
                     # 3. 修复下载按钮：读取二进制数据

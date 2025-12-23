@@ -14,11 +14,11 @@ class RenderModule(BaseModule):
         
         # === ⚠️ 关键路径配置 ===
         # 原代码中渲染脚本在另一个仓库 MotionLCM 下，这里保持原样
-        self.RENDER_WORK_DIR = "/root/autodl-tmp/MyRepository/MotionLCM/MotionLCM"
+        self.RENDER_WORK_DIR = "/root/autodl-tmp/MyRepository/MCM-LDM/"
         self.RENDER_SCRIPT = "render_result.sh"
 
     def render_sidebar(self):
-        st.info("💡 渲染模块运行在 MotionLCM 环境下，但读取的是 MCM-LDM 的结果。")
+        # st.info("💡 渲染模块运行在 MotionLCM 环境下，但读取的是 MCM-LDM 的结果。")
         st.caption(f"渲染引擎路径:\n{self.RENDER_WORK_DIR}")
 
     def render_main(self):
@@ -42,7 +42,7 @@ class RenderModule(BaseModule):
                 st.warning("⚠️ 没有找到生成结果 (results/mld is empty)")
                 return
 
-            selected_exp_name = st.selectbox("Step A: 选择实验", res_dirs, key="render_exp")
+            selected_exp_name = st.selectbox("Step A: 选择实验", res_dirs, key=self._get_key("render_exp"))
             selected_exp_path = os.path.join(results_root, selected_exp_name)
 
             # 1.2 选择具体序列 (Subdir)
@@ -56,7 +56,7 @@ class RenderModule(BaseModule):
                 st.error(f"❌ {selected_exp_name} 下没有子文件夹")
                 return
 
-            selected_subdir_name = st.selectbox("Step B: 选择动作序列", subdirs, key="render_subdir")
+            selected_subdir_name = st.selectbox("Step B: 选择动作序列", subdirs, key=self._get_key("render_subdir"))
             target_subdir_path = os.path.join(selected_exp_path, selected_subdir_name)
             
             st.success(f"📂 目标锁定: `.../{selected_subdir_name}`")
@@ -68,32 +68,38 @@ class RenderModule(BaseModule):
             
             c1, c2 = st.columns(2)
             with c1:
-                render_mode = st.selectbox("模式 (Mode)", ["sequence", "video", "frame"], key="r_mode")
-                smplify_iters = st.number_input("SMPL Iters", value=50, key="r_iters")
+                render_mode = st.selectbox("模式 (Mode)", ["sequence", "video", "frame"], key=self._get_key("r_mode"))
+                smplify_iters = st.number_input("SMPL Iters", value=50, key=self._get_key("r_iters"))
             
             with c2:
                 # 动态参数逻辑
                 param_arg = ""
                 if render_mode == "sequence":
-                    val = st.number_input("帧数 (Frames)", value=4, min_value=1)
+                    val = st.number_input("帧数 (Frames)", value=4, min_value=1, key=self._get_key("seqence_num"))
                     param_arg = f"--num {int(val)}"
                 elif render_mode == "video":
-                    val = st.number_input("帧率 (FPS)", value=20)
+                    val = st.number_input("帧率 (FPS)", value=20, key=self._get_key("video_fps"))
                     param_arg = f"--fps {int(val)}"
                 elif render_mode == "frame":
-                    val = st.slider("帧位置 (0.0-1.0)", 0.0, 1.0, 0.5)
+                    val = st.slider("帧位置 (0.0-1.0)", 0.0, 1.0, 0.5, key=self._get_key("frame_pos_slider"))
                     param_arg = f"--exact_frame {val}"
 
             c3, c4 = st.columns(2)
             with c3:
-                res_quality = st.selectbox("分辨率 (Res)", ["high", "low"], index=0, key="r_res")
+                res_quality = st.selectbox("分辨率 (Res)", ["high", "low"], index=0, key=self._get_key("r_res"))
             with c4:
-                is_gt = st.checkbox("是 Ground Truth? (绿色)", value=False, key="r_gt")
+                is_gt = st.checkbox("是 Ground Truth? (绿色)", value=False, key=self._get_key("r_gt"))
 
             st.divider()
+
+            column1, column2 = st.columns(2)
+            with column1:
+                render_balance = st.checkbox("渲染独木桥？",value=False, key=self._get_key("render_renderBalance"))
+            with column2:
+                render_lowCeiling = st.checkbox("渲染低矮天花板？", value=False, key=self._get_key("render_renderLowCeiling"))
             
             # 1.4 执行按钮
-            if st.button("🎨 开始渲染 (Run Pipeline)", type="primary", use_container_width=True):
+            if st.button("🎨 开始渲染 (Run Pipeline)", type="primary", use_container_width=True, key=self._get_key("run_pipeline")):
                 self._run_render_pipeline(
                     target_subdir_path, smplify_iters, render_mode, res_quality, param_arg, is_gt, selected_subdir_name
                 )
@@ -148,6 +154,7 @@ class RenderModule(BaseModule):
         if success:
             self.set_state("last_log_path", log_path)
             st.toast("🎨 渲染任务已启动！")
+            self.set_live2d_state('success')
             time.sleep(0.5)
             st.rerun()
         else:

@@ -16,104 +16,80 @@ class Live2DHelper:
         return {}
 
     def get_available_models(self):
-        """返回模型名称列表供下拉框使用"""
         return list(self.config.get("models", {}).keys())
 
     def get_message(self, state="idle"):
-        """根据状态获取台词"""
         dialogues = self.config.get("dialogues", {})
         msgs = dialogues.get(state, ["你好呀！"])
         return random.choice(msgs)
 
     def show(self, state="idle", model_name=None):
-        # 1. 确定模型 URL
         models_dict = self.config.get("models", {})
-        # 如果没选，默认用第一个
         if not model_name or model_name not in models_dict:
-            # 默认 fallback
             model_url = "https://fastly.jsdelivr.net/npm/live2d-widget-model-koharu@1.0.5/assets/koharu.model.json"
         else:
             model_url = models_dict[model_name]
 
-        # 2. 获取当前状态的台词
-        message = self.get_message(state)
-        
-        # 3. HTML 构造 (增强版)
+        initial_message = self.get_message(state)
+        idle_dialogues = self.config.get("dialogues", {}).get("idle", ["你好!"])
+        js_dialogues_array = json.dumps(idle_dialogues)
+
         html_code = f"""
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="utf-8">
         <style>
-            body {{ margin: 0; padding: 0; overflow: hidden; }}
-            
-            /* --- 修改点 1: 气泡样式调整 --- */
-            .tips {{
-                position: fixed;
-                bottom: 250px;       /* 稍微降低一点，适应变矮的小人 */
-                left: 250px;          /* 🔥 改成 left，让气泡靠左显示 */
-                width: 130px;        /* 稍微变窄一点，适应侧边栏 */
-                padding: 8px;
-                background: #fff;
-                border: 2px solid #ffb6c1;
-                border-radius: 8px;
-                color: #333;
-                font-size: 20px;     /* 字体改小一点点 */
+            /* 我们自定义的气泡，拥有最高权限 */
+            .my-custom-tips {{
+                position: fixed; bottom: 250px; left: 10px; width: 130px;
+                padding: 8px; background: #fff; border: 2px solid #ffb6c1;
+                border-radius: 8px; color: #333; font-size: 12px;
                 font-family: "Microsoft YaHei", sans-serif;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                pointer-events: auto;
-                text-align: center;
-                opacity: 0;
-                animation: popIn 0.5s forwards;
+                text-align: center; cursor: pointer; user-select: none;
+                z-index: 10000;
+                transition: transform 0.2s;
             }}
-            
-            /* 气泡小尾巴方向也改一下 */
-            .tips::after {{
-                content: '';
-                position: absolute;
-                bottom: -10px;
-                left: 100px;          /* 🔥 尾巴也移到左边 */
-                border-width: 10px 10px 0;
-                border-style: solid;
+            .my-custom-tips:hover {{ transform: scale(1.05); }}
+            .my-custom-tips::after {{
+                content: ''; position: absolute; bottom: -10px; left: 40px;
+                border-width: 10px 10px 0; border-style: solid;
                 border-color: #ffb6c1 transparent;
-            }}
-            
-            @keyframes popIn {{
-                0% {{ opacity: 0; transform: translateY(10px); }}
-                100% {{ opacity: 1; transform: translateY(0); }}
             }}
         </style>
         <script src="https://fastly.jsdelivr.net/npm/live2d-widget@3.1.4/lib/L2Dwidget.min.js"></script>
         </head>
         <body>
-            <div class="tips" id="waifu-tips">{message}</div>
+            <!-- 我们自定义、可点击的气泡 -->
+            <div class="my-custom-tips" id="waifu-tips">{initial_message}</div>
             
             <script>
+                const idleDialogues = {js_dialogues_array};
+
+                // 🔥 核心修复：使用最精简的配置，不添加任何 dialog 或 interaction 选项
+                // 这样库会启用其默认的交互行为，即点击身体触发动画。
                 L2Dwidget.init({{
-                    "model": {{ 
-                        "jsonPath": "{model_url}", 
-                        "scale": 1 
-                    }},
+                    "model": {{ "jsonPath": "{model_url}" }},
                     "display": {{ 
-                        "position": "left",   // 🔥 修改点 2: 改为靠左对齐
-                        "width": 250,         // 🔥 修改点 3: 宽度变小 (250 -> 150)
-                        "height": 500,        // 🔥 修改点 3: 高度变小 (500 -> 300)
-                        "hOffset": 10,        // 左边距 10px
-                        "vOffset": -20        // 底部微调
+                        "position": "left", "width": 150, "height": 300,
+                        "hOffset": 10, "vOffset": -20 
                     }},
-                    "mobile": {{ "show": true, "scale": 0.5 }},
-                    "react": {{ "opacityDefault": 1, "opacityOnHover": 1 }}
+                    "mobile": {{ "show": true }},
+                    "react": {{ "opacityDefault": 1 }}
                 }});
 
-                setInterval(() => {{
-                    const tips = document.getElementById('waifu-tips');
-                    tips.style.opacity = (tips.style.opacity == '0' ? '1' : '0');
-                }}, 8000);
+                // 我们自己的气泡逻辑，与 Live2D 库完全无关
+                const tipsBox = document.getElementById('waifu-tips');
+                if (tipsBox) {{
+                    tipsBox.addEventListener('click', () => {{
+                        const randomIndex = Math.floor(Math.random() * idleDialogues.length);
+                        tipsBox.innerText = idleDialogues[randomIndex];
+                    }});
+                }}
             </script>
         </body>
         </html>
         """
         
-        # 🔥 关键修改：高度给足 400，宽度自适应
-        # 放在 Sidebar 里时，这个宽度刚好占满 Sidebar 底部
-        components.html(html_code, height=400, scrolling=False)
+        components.html(html_code, height=350, scrolling=False)

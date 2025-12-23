@@ -127,15 +127,15 @@ class PointSelectorModule(BaseModule):
     def render_sidebar(self):
         st.subheader("📝 任务参数")
         with st.form(key=f"{self.name}_config_form"):
-            self.proj_name = st.text_input("Project Name", "Demo_Task_01")
-            self.motion_val = st.text_input("Motion ID", "000021")
+            self.proj_name = st.text_input("Project Name", "Demo_Task_01", key=self._get_key("proj_name"))
+            self.motion_val = st.text_input("Motion ID", "000021", key=self._get_key("moion_val"))
             st.form_submit_button("💾 更新")
 
         st.divider()
         st.subheader("🎨 绘图工具")
         
         # === 🔥 新增：范围控制开关 🔥 ===
-        use_default_range = st.checkbox("🔒 锁定视图范围 (20m)", value=False)
+        use_default_range = st.checkbox("🔒 锁定视图范围 (20m)", value=False, key=self._get_key("use_default_range"))
         
         if use_default_range:
             self.current_world_range = 20.0
@@ -143,7 +143,8 @@ class PointSelectorModule(BaseModule):
             self.current_world_range = st.number_input(
                 "🌍 地图尺寸 (米)", 
                 min_value=10.0, max_value=200.0, value=20.0, step=10.0,
-                help="设置画布代表的物理范围。例如设为 40，则范围是 -20到20。"
+                help="设置画布代表的物理范围。例如设为 40，则范围是 -20到20。",
+                key=self._get_key("current_world_range")
             )
         
         # 动态计算比例尺
@@ -151,7 +152,7 @@ class PointSelectorModule(BaseModule):
         # ==========================================
 
         self.obs_height = 2.0 
-        self.draw_mode = st.radio("绘制对象:", ("📍 轨迹点 (Green)", "🧱 圆柱 (Red Cylinder)", "📦 长方体 (Blue Box)"))
+        self.draw_mode = st.radio("绘制对象:", ("📍 轨迹点 (Green)", "🧱 圆柱 (Red Cylinder)", "📦 长方体 (Blue Box)"), key=self._get_key("draw_mode"))
         
         if "轨迹" in self.draw_mode:
             self.canvas_mode = "point"
@@ -162,26 +163,26 @@ class PointSelectorModule(BaseModule):
             self.stroke_color = "#FF0000"
             self.obs_radius_m = st.slider("圆柱半径 (m)", 0.2, 5.0, 0.5, step=0.1)
             self.point_radius = int(self.obs_radius_m * self.px_per_m)
-            self.obs_height = st.number_input("圆柱高度 (m)", value=2.0)
+            self.obs_height = st.number_input("圆柱高度 (m)", value=2.0, key=self._get_key("obs_cylinder_height"))
         elif "长方体" in self.draw_mode:
             self.canvas_mode = "rect"
             self.stroke_color = "#0000FF"
             self.point_radius = 6 
-            self.obs_height = st.number_input("长方体高度 (m)", value=1.0)
+            self.obs_height = st.number_input("长方体高度 (m)", value=1.0, key=self._get_key("obs_rect_height"))
 
         st.divider()
         
         if HAS_PLANNER:
-            self.show_algo = st.toggle("开启路径预览", value=True)
+            self.show_algo = st.toggle("开启路径预览", value=True, key=self._get_key("show_algo"))
             if self.show_algo:
                 with st.expander("🛠️ 算法高级参数", expanded=True):
-                    self.algo_margin = st.slider("1. 避障安全距离 (Margin)", 0.0, 3.0, 0.8, 0.1)
-                    self.algo_epsilon = st.slider("2. 路径简化 (Simplify)", 0.0, 2.0, 0.3, 0.1)
-                    self.algo_smooth = st.slider("3. 曲线平滑 (Smooth)", 0.0, 3.0, 0.5, 0.1)
+                    self.algo_margin = st.slider("1. 避障安全距离 (Margin)", 0.0, 3.0, 0.8, 0.1, key=self._get_key("algo_margin"))
+                    self.algo_epsilon = st.slider("2. 路径简化 (Simplify)", 0.0, 2.0, 0.3, 0.1, key=self._get_key("algo_epsilon"))
+                    self.algo_smooth = st.slider("3. 曲线平滑 (Smooth)", 0.0, 3.0, 0.5, 0.1, key=self._get_key("algo_smooth"))
         else:
             self.show_algo = False
             
-        st.button("🗑️ 清空画布", on_click=lambda: st.rerun())
+        st.button("🗑️ 清空画布", on_click=lambda: st.rerun(), key=self._get_key("clear_drawing"))
 
     def render_main(self):
         st.markdown("## 🗺️ 场景编辑器")
@@ -210,7 +211,7 @@ class PointSelectorModule(BaseModule):
                 width=self.CANVAS_SIZE,
                 drawing_mode=self.canvas_mode,
                 point_display_radius=self.point_radius,
-                key="scene_editor_main", # 保持key不变以维持session状态
+                key=self._get_key("scene_editor_main"), # 保持key不变以维持session状态
                 display_toolbar=True,
             )
 
@@ -303,7 +304,7 @@ class PointSelectorModule(BaseModule):
                 }
                 
                 st.json(final_json)
-                if st.button("💾 保存 Task JSON", type="primary", use_container_width=True):
+                if st.button("💾 保存 Task JSON", type="primary", use_container_width=True,key=self._get_key("save_json_btn")):
                     self._save_json(final_json)
 
     def _save_json(self, data):
