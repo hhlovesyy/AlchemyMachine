@@ -146,3 +146,5 @@ class PathPlanner:
                 return simplified_path
         else:
             return simplified_path
+        
+        # 1
